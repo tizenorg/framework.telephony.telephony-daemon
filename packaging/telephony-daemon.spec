@@ -5,12 +5,13 @@ Release:    2
 Group:      System/Telephony
 License:    Apache
 Source0:    %{name}-%{version}.tar.gz
-Source1:    telephony.service
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gobject-2.0)
 BuildRequires:  pkgconfig(tcore)
 BuildRequires:  pkgconfig(dlog)
+BuildRequires:  pkgconfig(libsystemd-daemon)
+%{?systemd_requires}
 
 %description
 Description: Telephony daemon
@@ -25,7 +26,6 @@ make %{?jobs:-j%jobs}
 %install
 %make_install
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system/multi-user.target.wants
-install -m 0644 %{SOURCE1} %{buildroot}%{_prefix}/lib/systemd/system/telephony.service
 ln -s ../telephony.service %{buildroot}%{_prefix}/lib/systemd/system/multi-user.target.wants/telephony.service
 mkdir -p %{buildroot}/usr/share/license
 

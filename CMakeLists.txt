@@ -8,7 +8,7 @@ SET(INCLUDEDIR "\${prefix}/include")
 
 # Set required packages
 INCLUDE(FindPkgConfig)
-pkg_check_modules(pkgs REQUIRED glib-2.0 gobject-2.0 tcore dlog)
+pkg_check_modules(pkgs REQUIRED glib-2.0 gobject-2.0 tcore dlog libsystemd-daemon)
 
 FOREACH(flag ${pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -47,3 +47,4 @@ INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/resource/etc/rc.d/rc3.d/S30telephony-d
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/resource/etc/rc.d/rc5.d/S30telephony-daemon DESTINATION /etc/rc.d/rc5.d/
 		        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_WRITE WORLD_EXECUTE)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE DESTINATION /usr/share/license RENAME telephony-daemon)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/systemd/telephony.service DESTINATION /usr/lib/systemd/system)
