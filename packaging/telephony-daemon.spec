@@ -33,9 +33,6 @@ mkdir -p %{buildroot}/usr/share/license
 %manifest telephony-daemon.manifest
 %defattr(-,root,root,-)
 %{_bindir}/telephony-daemon
-%{_sysconfdir}/rc.d/init.d/telephony-daemon
-%{_sysconfdir}/rc.d/rc3.d/S30telephony-daemon
-%{_sysconfdir}/rc.d/rc5.d/S30telephony-daemon
 %{_prefix}/lib/systemd/system/telephony.service
 %{_prefix}/lib/systemd/system/multi-user.target.wants/telephony.service
 /usr/share/license/telephony-daemon
