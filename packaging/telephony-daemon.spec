@@ -1,6 +1,6 @@
 Name:       telephony-daemon
 Summary:    Telephony daemon
-Version:    0.1.12
+Version:    0.1.13
 Release:    2
 Group:      System/Telephony
 License:    Apache
@@ -11,6 +11,7 @@ BuildRequires:  pkgconfig(gobject-2.0)
 BuildRequires:  pkgconfig(tcore)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(libsystemd-daemon)
+Requires(post):           sys-assert
 %{?systemd_requires}
 
 %description
