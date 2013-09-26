@@ -3,7 +3,7 @@ Summary:    Telephony daemon
 Version:    0.1.13
 Release:    2
 Group:      System/Telephony
-License:    Apache
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(glib-2.0)
@@ -29,6 +29,7 @@ make %{?jobs:-j%jobs}
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system/multi-user.target.wants
 ln -s ../telephony.service %{buildroot}%{_prefix}/lib/systemd/system/multi-user.target.wants/telephony.service
 mkdir -p %{buildroot}/usr/share/license
+cp LICENSE %{buildroot}/usr/share/license/%{name}
 
 %files
 %manifest telephony-daemon.manifest
@@ -36,4 +37,4 @@ mkdir -p %{buildroot}/usr/share/license
 %{_bindir}/telephony-daemon
 %{_prefix}/lib/systemd/system/telephony.service
 %{_prefix}/lib/systemd/system/multi-user.target.wants/telephony.service
-/usr/share/license/telephony-daemon
+/usr/share/license/%{name}
