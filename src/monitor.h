@@ -1,7 +1,7 @@
 /*
  * telephony-daemon
  *
- * Copyright (c) 2012 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2013 Samsung Electronics Co. Ltd. All rights reserved.
  *
  * Contact: Ja-young Gu <jygu@samsung.com>
  *
@@ -18,10 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef __MONITIR_H__
-#define __MONITOR_H__
+#pragma once
 
+#include <tcore.h>
 
 void monitor_server_state(Server *s);
-
-#endif
