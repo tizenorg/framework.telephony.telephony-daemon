@@ -1,33 +1,45 @@
-Name:       telephony-daemon
-Summary:    Telephony daemon
-Version:    0.1.6
-Release:    1
-Group:      System/Telephony
-License:    Apache
-Source0:    %{name}-%{version}.tar.gz
+%define major 1
+%define minor 3
+%define patchlevel 19
+
+Name:           telephony-daemon
+Version:        %{major}.%{minor}.%{patchlevel}
+Release:        2
+License:        Apache-2.0
+Summary:        Telephony Daemon
+Group:          System/Telephony
+Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  cmake
-BuildRequires:  pkgconfig(glib-2.0)
-BuildRequires:  pkgconfig(gobject-2.0)
-BuildRequires:  pkgconfig(tcore)
 BuildRequires:  pkgconfig(dlog)
+BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(tcore)
+BuildRequires:  pkgconfig(vconf)
+Requires(post):           sys-assert
 
 %description
-Description: Telephony daemon
+Description: Telephony Daemon
 
 %prep
 %setup -q
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 
 %build
-make %{?jobs:-j%jobs}
+cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DVERSION=%{version} \
+	-DTIZEN_DEBUG_ENABLE=1 \
+
+make %{?_smp_mflags}
 
 %install
+
 %make_install
+mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
+ln -s %{_libdir}/systemd/system/telephony-daemon.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/telephony-daemon.service
+
+%post -p /sbin/ldconfig
 
 %files
 %manifest telephony-daemon.manifest
 %defattr(-,root,root,-)
 %{_bindir}/telephony-daemon
-%{_initrddir}/telephony-daemon
-%{_sysconfdir}/rc.d/rc3.d/S30telephony-daemon
-%{_sysconfdir}/rc.d/rc5.d/S30telephony-daemon
+%attr(644,root,root) %{_libdir}/systemd/system/telephony-daemon.service
+%attr(644,root,root) %{_libdir}/systemd/system/multi-user.target.wants/telephony-daemon.service
+%{_datadir}/license/telephony-daemon

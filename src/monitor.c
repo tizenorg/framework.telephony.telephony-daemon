@@ -1,7 +1,7 @@
 /*
  * telephony-daemon
  *
- * Copyright (c) 2012 Samsung Electronics Co., Ltd. All rights reserved.
+ * Copyright (c) 2013 Samsung Electronics Co. Ltd. All rights reserved.
  *
  * Contact: Ja-young Gu <jygu@samsung.com>
  *
@@ -18,27 +18,21 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <time.h>
-#include <dlfcn.h>
-#include <getopt.h>
-
-#include <glib.h>
-#include <glib-object.h>
-
-#include <tcore.h>
-#include <plugin.h>
-#include <server.h>
-#include <hal.h>
-#include <queue.h>
-#include <storage.h>
-#include <communicator.h>
-
 #include "monitor.h"
+
+#include <stdlib.h>
+#include <glib.h>
+
+#include <communicator.h>
+#include <user_request.h>
+#include <storage.h>
+#include <server.h>
+#include <plugin.h>
+#include <queue.h>
+#include <hal.h>
+#include <core_object.h>
+
+#define NOTUSED(var) (var = var)
 
 /* hacking TcoreQueue */
 struct tcore_queue_type {
@@ -46,9 +40,40 @@ struct tcore_queue_type {
 	GQueue *gq;
 };
 
+static void _hash_dump(gpointer key, gpointer value, gpointer user_data)
+{
+	NOTUSED(user_data);
+
+	msg("         - %s: [%s]", key, value);
+}
+
+static void _monitor_core_objects(GSList *list)
+{
+	CoreObject *co;
+	GHashTable *prop;
+
+	do {
+		co = list->data;
+
+		msg("     Name: [%s]", tcore_object_ref_name(co));
+		msg("       - addr: %p", co);
+		msg("       - type: %p", tcore_object_get_type(co));
+		msg("       - hal: %p", tcore_object_get_hal(co));
+
+		prop = tcore_object_ref_property_hash(co);
+		if (prop) {
+			msg("       - Properties: %d", g_hash_table_size(prop));
+			g_hash_table_foreach(prop, _hash_dump, NULL);
+		}
+
+		list = list->next;
+	} while(list);
+}
+
 static void _monitor_plugin(Server *s)
 {
 	GSList *list;
+	GSList *co_list;
 	TcorePlugin *p;
 	char *str;
 
@@ -64,14 +89,23 @@ static void _monitor_plugin(Server *s)
 		msg("Name: [%s]", tcore_plugin_get_description(p)->name);
 
 		str = tcore_plugin_get_filename(p);
-		msg(" - file: %s", str);
-		if (str)
+		if (str) {
+			msg(" - file: %s", str);
 			free(str);
+		}
 
 		msg(" - addr: %p", p);
 		msg(" - userdata: %p", tcore_plugin_ref_user_data(p));
-		msg("");
 
+		co_list = tcore_plugin_get_core_objects(p);
+		if (co_list) {
+			msg(" - core_object list: %d", g_slist_length(co_list));
+
+			_monitor_core_objects(co_list);
+			g_slist_free(co_list);
+		}
+
+		msg("");
 
 		list = list->next;
 	} while(list);
@@ -81,7 +115,6 @@ static void _monitor_storage(Server *s)
 {
 	GSList *list;
 	Storage *strg;
-	char *str;
 
 	msg("-- Storages --");
 
@@ -130,6 +163,7 @@ static void _monitor_hal(Server *s)
 	TcoreHal *h;
 	TcoreQueue *q;
 	TcorePending *pending;
+	UserRequest *ur;
 	char *str;
 	int qlen;
 	int i;
@@ -146,7 +180,10 @@ static void _monitor_hal(Server *s)
 		h = list->data;
 
 		str = tcore_hal_get_name(h);
-		msg("Name: [%s]", str);
+		if (str) {
+			msg("Name: [%s]", str);
+			free(str);
+		}
 		msg(" - addr: %p", h);
 		msg(" - parent_plugin: %p", tcore_hal_ref_plugin(h));
 		msg(" - userdata: %p", tcore_hal_ref_user_data(h));
@@ -169,7 +206,11 @@ static void _monitor_hal(Server *s)
 		msg("   queue_head: %p", g_queue_peek_head(q->gq));
 		for (i = 0; i < qlen; i++) {
 			pending = g_queue_peek_nth(q->gq, i);
-			msg("   [%02d] pending=%p, id=0x%x, ur=%p", i, pending, tcore_pending_get_id(pending), tcore_pending_ref_user_request(pending));
+			ur = tcore_pending_ref_user_request(pending);
+			msg("   [%02d] pending=%p, id=0x%x, ur=%p", i, pending, tcore_pending_get_id(pending), ur);
+			if (ur) {
+				msg("        ur request command = 0x%x", tcore_user_request_get_command(ur));
+			}
 			data_len = 0;
 			data = tcore_pending_ref_request_data(pending, &data_len);
 			msg("        data=%p, data_len=%d", data, data_len);

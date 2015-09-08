@@ -1,8 +1,138 @@
 <manifest>
 	<define>
-		<domain name="telephony_framework" policy="restricted" plist="tel-plugin-atmodem, tel-plugin-database, tel-plugin-dbus_tapi, tel-plugin-dpram, tel-plugin-factory, tel-plugin-indicator, tel-plugin-nitz, tel-plugin-packetservice, tel-plugin-samsung, tel-plugin-samsung_indicator, tel-plugin-svcmode, tel-plugin-svnet, tel-plugin-svnet2, tel-plugin-vconf, tel-plugin-vmodem"/>
+		<domain name="telephony_framework" policy="restricted[shared]"/>
+		<provide>
+			<label name="telephony_framework::db"/>
+			<label name="telephony_framework::api_manager"/>
+			<label name="telephony_framework::api_call"/>
+			<label name="telephony_framework::api_gps"/>
+			<label name="telephony_framework::api_modem"/>
+			<label name="telephony_framework::api_network"/>
+			<label name="telephony_framework::api_phonebook"/>
+			<label name="telephony_framework::api_sap"/>
+			<label name="telephony_framework::api_sat"/>
+			<label name="telephony_framework::api_sim"/>
+			<label name="telephony_framework::api_sms"/>
+			<label name="telephony_framework::api_ss"/>
+			<label name="telephony_framework::api_ps_public"/>
+			<label name="telephony_framework::api_ps_profile"/>
+			<label name="telephony_framework::api_ps_private"/>
+			<label name="telephony_framework::api_private"/>
+			<label name="telephony_framework::vconf"/>
+			<label name="telephony_framework::properties"/>
+		</provide>
+		<request>
+			<smack request="telephony_framework::properties" type="rwx"/>
+			<smack request="dbus" type="rwx"/>
+			<smack request="sys-assert::core" type="rwxat"/>
+			<smack request="system::use_internet" type="rwx"/>
+			<smack request="secure-storage::telephony_sim" type="rw"/>
+			<smack request="security-server::api-privilege-by-pid" type="w"/>
+			<smack request="deviced::display" type="rw"/>
+			<smack request="system::vconf" type="rwxat"/>
+			<smack request="system::vconf_system" type="rwxat"/>
+		</request>
+		<permit>
+			<smack permit="dbus" type="rwx"/>
+			<smack permit="system::use_internet" type="rwx"/>
+		</permit>
 	</define>
+	<assign>
+		<filesystem path="/usr/lib/systemd/system/telephony-daemon.service" label="_"/>
+		<filesystem path="/usr/lib/systemd/system/tizen-system.target.wants/telephony-daemon.service" label="_"/>
+		<dbus name="org.tizen.telephony" own="telephony_framework" bus="system">
+			<node name="/org/tizen/telephony">
+				<interface name="org.freedesktop.DBus.Properties">
+					<annotation name="com.tizen.smack" value="telephony_framework::properties"/>
+				</interface>
+			</node>
+		</dbus>
+		<dbus name="com.tcore.ps" own="telephony_framework" bus="system">
+			<node name="/">
+				<interface name="com.tcore.ps.context">
+					<method name="GetProperties">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="GetProfile">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="Activate">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</method>
+					<method name="Deactivate">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</method>
+					<method name="SetDefaultConnection">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_profile"/>
+					</method>
+					<method name="ModifyProfile">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_profile"/>
+					</method>
+					<method name="RemoveProfile">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_profile"/>
+					</method>
+					<signal name="PropertyChanged">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+				</interface>
+				<interface name="com.tcore.ps.master">
+					<method name="GetModems">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<signal name="ModemAdded">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+					<signal name="ModemRemoved">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+				</interface>
+				<interface name="com.tcore.ps.modem">
+					<method name="GetProperties">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="GetServices">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="GetProfileList">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="AddProfile">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_profile"/>
+					</method>
+					<method name="ResetProfile">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_profile"/>
+					</method>
+					<signal name="PropertyChanged">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+					<signal name="ServiceAdded">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+					<signal name="ServiceRemoved">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+				</interface>
+				<interface name="com.tcore.ps.service">
+					<method name="GetProperties">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<method name="GetContexts">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_public"/>
+					</method>
+					<signal name="PropertyChanged">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+					<signal name="ContextAdded">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+					<signal name="ContextRemoved">
+						<annotation name="com.tizen.smack" value="telephony_framework::api_ps_private"/>
+					</signal>
+				</interface>
+			</node>
+		</dbus>
+	</assign>
 	<request>
-		<domain name="_"/>
+		<domain name="telephony_framework"/>
 	</request>
 </manifest>
