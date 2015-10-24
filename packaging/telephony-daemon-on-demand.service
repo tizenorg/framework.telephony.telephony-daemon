@@ -7,9 +7,6 @@ User=system
 Group=system
 SmackProcessLabel=telephony_framework
 ExecStart=/usr/bin/telephony-daemon
-Restart=always
+Restart=on-failure
 RestartSec=0
 KillMode=none
-
-[Install]
-WantedBy=multi-user.target

@@ -1,10 +1,10 @@
 %define major 1
 %define minor 3
-%define patchlevel 19
+%define patchlevel 46
 
 Name:           telephony-daemon
 Version:        %{major}.%{minor}.%{patchlevel}
-Release:        2
+Release:        1
 License:        Apache-2.0
 Summary:        Telephony Daemon
 Group:          System/Telephony
@@ -14,7 +14,6 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(tcore)
 BuildRequires:  pkgconfig(vconf)
-Requires(post):           sys-assert
 
 %description
 Description: Telephony Daemon
@@ -25,21 +24,29 @@ Description: Telephony Daemon
 %build
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix} -DVERSION=%{version} \
 	-DTIZEN_DEBUG_ENABLE=1 \
+%if "%{?tizen_profile_name}" == "tv"
+	-DTIZEN_PROFILE_TV=1 \
+%endif
 
 make %{?_smp_mflags}
 
 %install
 
 %make_install
+
+%if "%{?tizen_profile_name}" != "tv"
 mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
 ln -s %{_libdir}/systemd/system/telephony-daemon.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/telephony-daemon.service
+%endif
 
 %post -p /sbin/ldconfig
 
 %files
 %manifest telephony-daemon.manifest
-%defattr(-,root,root,-)
-%{_bindir}/telephony-daemon
-%attr(644,root,root) %{_libdir}/systemd/system/telephony-daemon.service
-%attr(644,root,root) %{_libdir}/systemd/system/multi-user.target.wants/telephony-daemon.service
+%defattr(644,system,system,-)
+%caps(cap_net_admin=eip) %attr(755,system,system) %{_bindir}/telephony-daemon
+%{_libdir}/systemd/system/telephony-daemon.service
+%if "%{?tizen_profile_name}" != "tv"
+%{_libdir}/systemd/system/multi-user.target.wants/telephony-daemon.service
+%endif
 %{_datadir}/license/telephony-daemon

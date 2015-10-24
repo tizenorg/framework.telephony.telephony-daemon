@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <signal.h>
 #include <dlfcn.h>
 #include <getopt.h>
 #include <sys/stat.h>
@@ -50,9 +50,6 @@
 #define NOTUSED(var) (var = var)
 #define BUFFER_SIZE 1024
 
-/* Internal vconf to maintain telephony load info (Number of times telephony daemon is loaded) */
-#define VCONFKEY_TELEPHONY_DAEMON_LOAD_COUNT "memory/private/telephony/daemon_load_count"
-
 static Server *_server = NULL;
 
 static void __usage_info(const char *exec)
@@ -68,20 +65,24 @@ void tcore_log(enum tcore_log_type type, enum tcore_log_priority priority, const
 {
 	va_list ap;
 	char buf[BUFFER_SIZE];
+	int log_id = LOG_ID_RADIO;
+#ifdef TIZEN_PROFILE_TV
+	log_id = LOG_ID_MAIN;
+#endif
 
 	switch (type) {
 	case TCORE_LOG_TYPE_RADIO: {
 		if (priority >= TCORE_LOG_INFO) {
 			va_start(ap, fmt);
-			vsnprintf(buf, 1023, fmt, ap);
+			vsnprintf(buf, BUFFER_SIZE-1, fmt, ap);
 			va_end(ap);
-			__dlog_print(LOG_ID_RADIO, priority, tag, buf);
+			__dlog_print(log_id, priority, tag, buf);
 		} else {
 		#ifdef TIZEN_DEBUG_ENABLE
 			va_start(ap, fmt);
-			vsnprintf(buf, 1023, fmt, ap);
+			vsnprintf(buf, BUFFER_SIZE-1, fmt, ap);
 			va_end(ap);
-			__dlog_print(LOG_ID_RADIO, priority, tag, buf);
+			__dlog_print(log_id, priority, tag, buf);
 		#endif
 		}
 	} break;
@@ -91,18 +92,22 @@ void tcore_log(enum tcore_log_type type, enum tcore_log_priority priority, const
 		float a = 0.00, b = 0.00;
 		int next = 0;
 		FILE *fp = fopen("/proc/uptime", "r");
-		g_return_if_fail(NULL != fp);
-
-		if(fscanf(fp, "%f %f", &a, &b)){};
+		if (NULL == fp) {
+			err("fopen() failed");
+			return;
+		}
+		if (fscanf(fp, "%f %f", &a, &b) != 2)
+			next = snprintf(buf, BUFFER_SIZE, "[UPTIME] [Not Set] ");
+		else
+			next = snprintf(buf, BUFFER_SIZE, "[UPTIME] %f ", a);
 		fclose(fp);
-		next = snprintf(buf, BUFFER_SIZE, "[UPTIME] %f ", a);
 		if (next < 0)
 			return;
 
 		va_start(ap, fmt);
-		vsnprintf(buf + next, 1023 - next, fmt, ap);
+		vsnprintf(buf + next, (BUFFER_SIZE-1) - next, fmt, ap);
 		va_end(ap);
-		__dlog_print(LOG_ID_RADIO, priority, tag, buf);
+		__dlog_print(log_id, priority, tag, buf);
 	#endif
 	} break;
 
@@ -145,11 +150,35 @@ static void telephony_signal_handler(int signo)
 }
 #endif
 
+#if defined(TIZEN_PROFILE_TV) && !defined(TIZEN_DEBUG_ENABLE)
+static void telephony_signal_handler(int signo)
+{
+	if (!_server)
+		return;
+
+	switch (signo) {
+	case SIGHUP: {
+		warn("*~*~*~* Ignore Signal: [SIGHUP] *~*~*~*");
+	} break;
+
+	default: {
+		warn("*~*~*~* Unhandled Signal: [%d] *~*~*~*", signo);
+	} break;
+	} /* end switch */
+
+	return;
+}
+#endif
+
 static void __log_uptime()
 {
 	float a = 0.00, b = 0.00;
 	FILE *fp = fopen("/proc/uptime", "r");
-	g_return_if_fail(NULL != fp);
+
+	if (NULL == fp) {
+		err("fopen() failed");
+		return;
+	}
 	info("scanned %d items", fscanf(fp, "%f %f", &a, &b));
 	info("proc uptime = %f idletime = %f\n", a, b);
 	fclose(fp);
@@ -197,14 +226,14 @@ static void *__load_plugin(const gchar *filename, struct tcore_plugin_define_des
 	char file_date[27];
 
 	handle = dlopen(filename, RTLD_LAZY);
-	if (G_UNLIKELY(NULL == handle)) {
-		err("fail to load '%s': %s", filename, dlerror());
+	if (NULL == handle) {
+		err("dlopen() failed:[%s]", filename);
 		return NULL;
 	}
 
 	desc = dlsym(handle, "plugin_define_desc");
-	if (G_UNLIKELY(NULL == desc)) {
-		err("fail to load symbol: %s", dlerror());
+	if (NULL == desc) {
+		err("dlsym() failed:[%s]", "plugin_define_desc");
 		dlclose(handle);
 		return NULL;
 	}
@@ -262,7 +291,8 @@ static gboolean load_plugins(Server *s, const char *path, gboolean flag_test_loa
 		filename = g_build_filename(path, file, NULL);
 
 		/* Load a plugin */
-		if (G_UNLIKELY((handle = __load_plugin(filename, &desc)) == NULL)) {
+		handle = __load_plugin(filename, &desc);
+		if (NULL == handle) {
 			g_free(filename);
 			continue;
 		}
@@ -287,7 +317,7 @@ static gboolean load_plugins(Server *s, const char *path, gboolean flag_test_loa
 
 int main(int argc, char *argv[])
 {
-#ifdef TIZEN_DEBUG_ENABLE
+#if defined(TIZEN_DEBUG_ENABLE) || defined(TIZEN_PROFILE_TV)
 	struct sigaction sigact;
 #endif
 	Server *s = NULL;
@@ -318,9 +348,9 @@ int main(int argc, char *argv[])
 	info("glib version: %u.%u.%u", glib_major_version, glib_minor_version, glib_micro_version);
 
 	/* Telephony reset handling*/
-	vconf_get_int(VCONFKEY_TELEPHONY_DAEMON_LOAD_COUNT,&daemon_load_count);
+	vconf_get_int(VCONFKEY_TELEPHONY_DAEMON_LOAD_COUNT, &daemon_load_count);
 	daemon_load_count++;
-	vconf_set_int(VCONFKEY_TELEPHONY_DAEMON_LOAD_COUNT,daemon_load_count);
+	vconf_set_int(VCONFKEY_TELEPHONY_DAEMON_LOAD_COUNT, daemon_load_count);
 	dbg("daemon load count = [%d]", daemon_load_count);
 
 #ifdef TIZEN_DEBUG_ENABLE
@@ -332,7 +362,25 @@ int main(int argc, char *argv[])
 		warn("sigaction(SIGTERM) failed.");
 	if (sigaction(SIGUSR1, &sigact, NULL) < 0)
 		warn("sigaction(SIGUSR1) failed.");
+#ifdef TIZEN_PROFILE_TV
+	/* SIGHUP should be ignored because cellular dongle ejection makes this signal */
+	if (sigaction(SIGHUP, &sigact, NULL) < 0)
+		warn("sigaction(SIGHUP) failed.");
 #endif
+#endif
+
+#if defined(TIZEN_PROFILE_TV) && !defined(TIZEN_DEBUG_ENABLE)
+	/* Signal Registration */
+	sigact.sa_handler = telephony_signal_handler;
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = 0;
+	/* SIGHUP should be ignored because cellular dongle ejection makes this signal */
+	if (sigaction(SIGHUP, &sigact, NULL) < 0)
+		warn("sigaction(SIGHUP) failed.");
+#endif
+
+	if (signal(SIGCHLD, SIG_IGN) == SIG_ERR)
+		err("Child process won't be auto reaped: [%d]", errno);
 
 	/* Commandline option parser TODO: Replace with GOptionContext */
 	while (TRUE) {

@@ -16,9 +16,7 @@ ENDFOREACH(flag)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include/)
 
-SET(ADDITIONAL_CFLAGS "-Wno-array-bounds -Wno-empty-body -Wno-ignored-qualifiers -Wshadow -Wwrite-strings -Wswitch-default -Wno-unused-but-set-parameter -Wno-unused-but-set-variable")
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -Werror -Wextra -Wall -Wdeclaration-after-statement -Wmissing-declarations -Wredundant-decls -Wcast-align -Wcast-qual")
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ADDITIONAL_CFLAGS}")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -Werror -Wextra -Wall -Wdeclaration-after-statement -Wmissing-declarations -Wredundant-decls -Wcast-align -Wcast-qual -Wno-array-bounds -Wno-empty-body -Wno-ignored-qualifiers -Wshadow -Wwrite-strings -Wswitch-default -Wno-unused-but-set-parameter -Wno-unused-but-set-variable")
 
 ##Address-Space Layout Randomization
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE")
@@ -33,6 +31,9 @@ IF (TIZEN_DEBUG_ENABLE)
 	ADD_DEFINITIONS ("-DTIZEN_DEBUG_ENABLE")
 ENDIF (TIZEN_DEBUG_ENABLE)
 
+IF (TIZEN_PROFILE_TV)
+	ADD_DEFINITIONS ("-DTIZEN_PROFILE_TV")
+ENDIF (TIZEN_PROFILE_TV)
 
 MESSAGE(${CMAKE_C_FLAGS})
 MESSAGE(${pkgs_LDFLAGS})
@@ -55,4 +56,8 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${pkgs_LDFLAGS} "-ldl")
 # install
 INSTALL(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE DESTINATION /usr/share/license RENAME telephony-daemon)
-INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/packaging/telephony-daemon.service DESTINATION /usr/lib/systemd/system)
+IF (NOT TIZEN_PROFILE_TV)
+	INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/packaging/telephony-daemon.service DESTINATION /usr/lib/systemd/system)
+ELSE (NOT TIZEN_PROFILE_TV)
+	INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/packaging/telephony-daemon-on-demand.service DESTINATION /usr/lib/systemd/system RENAME telephony-daemon.service)
+ENDIF (NOT TIZEN_PROFILE_TV)
